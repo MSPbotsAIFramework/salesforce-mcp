@@ -23,7 +23,7 @@ from salesforce_mcp import api_client
 from salesforce_mcp.api_client import SalesforceClient, SalesforceCredentials, SalesforceError
 from salesforce_mcp.server import _credentials_var, create_mcp_server
 
-INSTANCE = "https://acme.my.salesforce.com"
+INSTANCE = "https://yourcompany.my.salesforce.com"
 CC = SalesforceCredentials(instance_url=INSTANCE, auth_flow="client_credentials", client_id="ck", client_secret="cs")
 DATA = "/services/data/v62.0/"
 ID1, ID2 = "001000000000001AAA", "001000000000002AAA"
@@ -31,7 +31,7 @@ ID1, ID2 = "001000000000001AAA", "001000000000002AAA"
 SOAP_OK = (
     '<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" '
     'xmlns="urn:partner.soap.sforce.com"><soapenv:Body><loginResponse><result>'
-    "<serverUrl>https://acme.my.salesforce.com/services/Soap/u/62.0/00D000000000001</serverUrl>"
+    "<serverUrl>https://yourcompany.my.salesforce.com/services/Soap/u/62.0/00D000000000001</serverUrl>"
     "<sessionId>SESSION-1</sessionId></result></loginResponse></soapenv:Body></soapenv:Envelope>"
 )
 SOAP_FAULT = (
@@ -131,7 +131,7 @@ async def test_soap_login_without_connected_app():
     assert b"<urn:username>u&amp;me@example.com</urn:username>" in login.content
     assert b"<urn:password>p&lt;wT</urn:password>" in login.content
     assert call.headers["Authorization"] == "Bearer SESSION-1"
-    assert str(call.url).startswith("https://acme.my.salesforce.com/services/data/")
+    assert str(call.url).startswith("https://yourcompany.my.salesforce.com/services/data/")
 
 
 async def test_soap_login_fault_is_unauthorized(monkeypatch):
@@ -280,10 +280,10 @@ async def test_sosl_search(monkeypatch):
 
 async def test_insert_uses_collections(monkeypatch):
     rec = Recorder({"POST composite/sobjects": [{"id": ID1, "success": True, "errors": []}, {"success": False, "errors": [{"message": "Required fields are missing: [Name]"}]}]})
-    result = await _call(monkeypatch, rec, "salesforce_dml_records", {"operation": "insert", "objectName": "Account", "records": [{"Name": "Acme"}, {}]})
+    result = await _call(monkeypatch, rec, "salesforce_dml_records", {"operation": "insert", "objectName": "Account", "records": [{"Name": "Example Co"}, {}]})
     assert body(rec.calls("composite/sobjects", "POST")[0]) == {
         "allOrNone": False,
-        "records": [{"attributes": {"type": "Account"}, "Name": "Acme"}, {"attributes": {"type": "Account"}}],
+        "records": [{"attributes": {"type": "Account"}, "Name": "Example Co"}, {"attributes": {"type": "Account"}}],
     }
     assert (result["succeeded"], result["failed"]) == (1, 1)
 
@@ -298,7 +298,7 @@ async def test_update_requires_ids(monkeypatch):
 
 async def test_upsert_path_and_key_check(monkeypatch):
     rec = Recorder({"PATCH composite/sobjects/Account/External_Id__c": [{"id": ID1, "success": True, "created": False}]})
-    args = {"operation": "upsert", "objectName": "Account", "externalIdField": "External_Id__c", "records": [{"External_Id__c": "A-1", "Name": "Acme"}]}
+    args = {"operation": "upsert", "objectName": "Account", "externalIdField": "External_Id__c", "records": [{"External_Id__c": "A-1", "Name": "Example Co"}]}
     result = await _call(monkeypatch, rec, "salesforce_dml_records", args)
     assert result["externalIdField"] == "External_Id__c" and result["succeeded"] == 1
     missing = await _call(monkeypatch, Recorder(), "salesforce_dml_records", {**args, "records": [{"Name": "x"}]})

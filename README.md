@@ -19,7 +19,7 @@ password flow).
 
 | Header | Required | Type | Default | Allowed values | Description | Example |
 |---|---|---|---|---|---|---|
-| `X-Salesforce-Instance-Url` | Yes | string | none | https URL | The org's My Domain URL (any path is ignored) | `https://acme.my.salesforce.com` |
+| `X-Salesforce-Instance-Url` | Yes | string | none | https URL | The org's My Domain URL (any path is ignored) | `https://yourcompany.my.salesforce.com` |
 | `X-Salesforce-Auth-Mode` | No | string | chosen from the fields sent | `client_credentials`, `username_password` | Force one flow | `client_credentials` |
 | `X-Salesforce-Client-Id` | One of | string | none | - | Connected app consumer key | `your-consumer-key` |
 | `X-Salesforce-Client-Secret` | One of | string | none | - | Connected app consumer secret | `your-consumer-secret` |
@@ -102,7 +102,7 @@ from the environment.
 curl -s http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -H "X-Salesforce-Instance-Url: https://acme.my.salesforce.com" \
+  -H "X-Salesforce-Instance-Url: https://yourcompany.my.salesforce.com" \
   -H "X-Salesforce-Client-Id: your-consumer-key" \
   -H "X-Salesforce-Client-Secret: your-consumer-secret" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
@@ -111,7 +111,7 @@ curl -s http://localhost:8080/mcp \
 curl -s http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -H "X-Salesforce-Instance-Url: https://acme.my.salesforce.com" \
+  -H "X-Salesforce-Instance-Url: https://yourcompany.my.salesforce.com" \
   -H "X-Salesforce-Client-Id: your-consumer-key" \
   -H "X-Salesforce-Client-Secret: your-consumer-secret" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"salesforce_aggregate_query","arguments":{"soql":"SELECT StageName, COUNT(Id) FROM Opportunity WHERE IsClosed = false GROUP BY StageName"}}}'

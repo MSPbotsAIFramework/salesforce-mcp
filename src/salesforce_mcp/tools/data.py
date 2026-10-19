@@ -157,7 +157,7 @@ def register(mcp: FastMCP, client_factory: ClientFactory) -> None:
     @mcp.tool(annotations=READ_ONLY)
     async def salesforce_search_all(
         sosl: Annotated[
-            str, Field(description="SOSL FIND, e.g. FIND {acme corp} IN ALL FIELDS RETURNING Account(Id,Name), Contact(Id,Name,Email).")
+            str, Field(description="SOSL FIND, e.g. FIND {example} IN ALL FIELDS RETURNING Account(Id,Name), Contact(Id,Name,Email).")
         ],
     ) -> str:
         """Search text across several objects at once with SOSL (names, emails, phone numbers, keywords)."""

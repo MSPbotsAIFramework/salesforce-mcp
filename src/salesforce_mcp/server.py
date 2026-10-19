@@ -68,7 +68,7 @@ INSTRUCTIONS = (
     "from a result to read the next batch. Rollups: salesforce_aggregate_query "
     "(GROUP BY, COUNT, SUM, ...).\n"
     "- Find a name, email or phone anywhere: salesforce_search_all with SOSL, "
-    "e.g. FIND {acme} IN ALL FIELDS RETURNING Account(Id,Name), Contact(Id,Name,Email).\n"
+    "e.g. FIND {example} IN ALL FIELDS RETURNING Account(Id,Name), Contact(Id,Name,Email).\n"
     "- Always add LIMIT to SOQL that may match many rows.\n"
     "salesforce_dml_records inserts, updates, upserts or deletes live CRM "
     "records: call it only when the user explicitly asks, with the exact "
@@ -166,7 +166,7 @@ class GatewayCredentialsMiddleware:
 
         instance_url = normalize_instance_url(instance_raw or "")
         if instance_url is None:
-            await self._reject(scope, receive, send, 400, f"{HEADER_INSTANCE_URL} must be an https URL such as https://acme.my.salesforce.com")
+            await self._reject(scope, receive, send, 400, f"{HEADER_INSTANCE_URL} must be an https URL such as https://yourcompany.my.salesforce.com")
             return
 
         credentials = SalesforceCredentials(

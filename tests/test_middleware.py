@@ -30,7 +30,7 @@ from salesforce_mcp.server import (
 
 MCP_HEADERS = {"Accept": "application/json, text/event-stream"}
 LIST_TOOLS = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-INSTANCE = {"X-Salesforce-Instance-Url": "https://acme.my.salesforce.com"}
+INSTANCE = {"X-Salesforce-Instance-Url": "https://yourcompany.my.salesforce.com"}
 CLIENT = {"X-Salesforce-Client-Id": "consumer-key", "X-Salesforce-Client-Secret": "consumer-secret"}
 USER = {"X-Salesforce-Username": "user@example.com", "X-Salesforce-Password": "pw"}
 
@@ -65,7 +65,7 @@ def test_missing_credentials_return_401(headers, missing):
 
 @pytest.mark.parametrize(
     "extra",
-    [{"X-Salesforce-Instance-Url": "http://acme.my.salesforce.com"}, {"X-Salesforce-Auth-Mode": "jwt"}],
+    [{"X-Salesforce-Instance-Url": "http://yourcompany.my.salesforce.com"}, {"X-Salesforce-Auth-Mode": "jwt"}],
 )
 def test_bad_values_return_400(extra):
     with _client() as client:
@@ -101,10 +101,10 @@ def test_resolve_flow(mode, has_client, has_user, expected):
 @pytest.mark.parametrize(
     "value,expected",
     [
-        ("https://acme.my.salesforce.com", "https://acme.my.salesforce.com"),
-        ("acme.my.salesforce.com/", "https://acme.my.salesforce.com"),
-        ("https://acme.lightning.force.com/lightning/page/home", "https://acme.lightning.force.com"),
-        ("http://acme.my.salesforce.com", None),
+        ("https://yourcompany.my.salesforce.com", "https://yourcompany.my.salesforce.com"),
+        ("yourcompany.my.salesforce.com/", "https://yourcompany.my.salesforce.com"),
+        ("https://yourcompany.lightning.force.com/lightning/page/home", "https://yourcompany.lightning.force.com"),
+        ("http://yourcompany.my.salesforce.com", None),
         ("https://", None),
     ],
 )
@@ -136,7 +136,7 @@ def test_user_flow_reaches_context_and_is_reset():
     seen = _run_middleware(INSTANCE | USER | {"X-Salesforce-Token": "sectok"})
     creds = seen["credentials"]
     assert (creds.auth_flow, creds.username, creds.security_token) == ("username_password", "user@example.com", "sectok")
-    assert seen["client"].instance_url == "https://acme.my.salesforce.com"
+    assert seen["client"].instance_url == "https://yourcompany.my.salesforce.com"
     assert _credentials_var.get() is None
 
 
