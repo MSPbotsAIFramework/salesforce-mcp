@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Credential middleware: flow selection, 401/400 on bad headers, isolation."""
+"""Credential middleware: flow selection, 401 on missing headers, deferred format errors, isolation."""
 
 import asyncio
 
@@ -67,10 +67,39 @@ def test_missing_credentials_return_401(headers, missing):
     "extra",
     [{"X-Salesforce-Instance-Url": "http://yourcompany.my.salesforce.com"}, {"X-Salesforce-Auth-Mode": "jwt"}],
 )
-def test_bad_values_return_400(extra):
+def test_bad_values_are_reported_by_tools(extra):
+    seen = _run_middleware(INSTANCE | CLIENT | extra)
+    assert seen["client"].header_error
+    call = {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "salesforce_search_objects", "arguments": {"pattern": "Account"}}}
     with _client() as client:
-        resp = client.post("/mcp", json=LIST_TOOLS, headers=MCP_HEADERS | INSTANCE | CLIENT | extra)
-    assert resp.status_code == 400
+        resp = client.post("/mcp", json=call, headers=MCP_HEADERS | INSTANCE | CLIENT | extra)
+    assert resp.status_code == 200
+    assert '\\"invalid_argument\\"' in resp.text
+    assert next(iter(extra)) in resp.text
+
+
+def test_bad_values_never_reach_salesforce():
+    seen = _run_middleware(CLIENT | {"X-Salesforce-Instance-Url": "http://elsewhere.example.com"})
+    client = seen["client"]
+    assert "https URL" in client.header_error
+    assert "elsewhere" not in client.instance_url
+    with pytest.raises(Exception, match="https URL"):
+        asyncio.run(client.get("sobjects"))
+
+
+def test_placeholder_headers_still_list_tools():
+    # The admin console refreshes the tool catalog with placeholder header values.
+    headers = {
+        name: "placeholder"
+        for name in (
+            "X-Salesforce-Instance-Url", "X-Salesforce-Auth-Mode", "X-Salesforce-Client-Id", "X-Salesforce-Client-Secret",
+            "X-Salesforce-Username", "X-Salesforce-Password", "X-Salesforce-Token",
+        )
+    }
+    with _client() as client:
+        resp = client.post("/mcp", json=LIST_TOOLS, headers=MCP_HEADERS | headers)
+    assert resp.status_code == 200
+    assert "salesforce_dml_records" in resp.text
 
 
 @pytest.mark.parametrize("auth", [CLIENT, USER])

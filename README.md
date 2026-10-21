@@ -47,8 +47,10 @@ How credentials are sent to Salesforce: the server obtains an access token from
 (401) triggers one fresh login. Values that look like unresolved templates (`${...}`) are
 treated as missing.
 
-A request to `/mcp` without the headers its flow needs gets HTTP 401 naming them; a non-https
-instance URL or an unknown auth mode gets HTTP 400.
+A request to `/mcp` without the headers its flow needs gets HTTP 401 naming them. A non-https
+instance URL or an unknown auth mode does not block the request (so `tools/list` works with any
+values); every tool call then returns an `invalid_argument` error naming the header, and nothing
+is sent to Salesforce.
 
 ## Tools
 

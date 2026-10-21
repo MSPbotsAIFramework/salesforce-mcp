@@ -93,6 +93,9 @@ class SalesforceCredentials:
     username: str | None = None
     password: str | None = None
     security_token: str | None = None
+    # Set when a header value is malformed: tools then return invalid_argument
+    # instead of calling Salesforce, while tools/list still works.
+    header_error: str | None = None
 
     def __repr__(self) -> str:  # never leak secrets into logs or tracebacks
         return f"SalesforceCredentials(instance_url={self.instance_url!r}, auth_flow={self.auth_flow!r}, secrets=<redacted>)"
@@ -108,6 +111,7 @@ class SalesforceClient:
     def __init__(self, credentials: SalesforceCredentials, http_client: httpx.AsyncClient | None = None):
         self._credentials = credentials
         self._http = http_client
+        self.header_error = credentials.header_error
         self.instance_url = credentials.instance_url.rstrip("/")
         self._token: str | None = None
 
@@ -173,6 +177,8 @@ class SalesforceClient:
         return self.instance_url or DEFAULT_LOGIN_URL
 
     async def authenticate(self) -> None:
+        if self.header_error:  # never send credentials to an unchecked instance URL
+            raise SalesforceError(400, self.header_error)
         creds = self._credentials
         if creds.auth_flow == "client_credentials":
             await self._oauth(
@@ -200,6 +206,8 @@ class SalesforceClient:
 
     async def request(self, method: str, path: str, params: dict[str, Any] | None = None, body: Any = None) -> Any:
         """Call ``{instance}/services/data/vXX.X/{path}`` (or an absolute /services/... path)."""
+        if self.header_error:
+            raise SalesforceError(400, self.header_error)
         if not self._token:
             await self.authenticate()
         resp = await self._send(method, path, params, body)

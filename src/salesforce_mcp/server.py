@@ -38,6 +38,9 @@ HEADER_TOKEN = "X-Salesforce-Token"
 
 _PLACEHOLDER = re.compile(r"^\$\{.*\}$")
 _LOCAL_HOSTS = {"localhost", "127.0.0.1"}
+# Stand-in for a rejected instance URL; the .invalid TLD never resolves, and the
+# client refuses every request anyway while header_error is set.
+_UNUSABLE_INSTANCE_URL = "https://instance-url.invalid"
 # Accepted spellings of the auth mode header; blank means "decide from the fields".
 _MODES: dict[str, AuthFlow] = {
     "client_credentials": "client_credentials",
@@ -121,7 +124,9 @@ class GatewayCredentialsMiddleware:
 
     Needs X-Salesforce-Instance-Url plus either Client-Id + Client-Secret
     (client credentials) or Username + Password (username / password, with
-    the optional security token); otherwise 401.
+    the optional security token); otherwise 401. A malformed instance URL or
+    auth mode does not block the request (tools/list must work with any
+    values); tools report it instead and never contact Salesforce.
     """
 
     def __init__(self, app: ASGIApp):
@@ -142,10 +147,12 @@ class GatewayCredentialsMiddleware:
         username, password = header(HEADER_USERNAME), header(HEADER_PASSWORD)
         mode = header(HEADER_AUTH_MODE)
 
-        flow = resolve_flow(mode, bool(client_id and client_secret), bool(username and password))
+        errors: list[str] = []
+        has_client, has_user = bool(client_id and client_secret), bool(username and password)
+        flow = resolve_flow(mode, has_client, has_user)
         if mode and flow is None:
-            await self._reject(scope, receive, send, 400, f"{HEADER_AUTH_MODE} must be client_credentials or username_password")
-            return
+            errors.append(f"{HEADER_AUTH_MODE} must be client_credentials or username_password")
+            flow = resolve_flow(None, has_client, has_user)
         missing = [] if instance_raw else [HEADER_INSTANCE_URL]
         if flow == "client_credentials":
             missing += [n for n, v in ((HEADER_CLIENT_ID, client_id), (HEADER_CLIENT_SECRET, client_secret)) if not v]
@@ -166,8 +173,8 @@ class GatewayCredentialsMiddleware:
 
         instance_url = normalize_instance_url(instance_raw or "")
         if instance_url is None:
-            await self._reject(scope, receive, send, 400, f"{HEADER_INSTANCE_URL} must be an https URL such as https://yourcompany.my.salesforce.com")
-            return
+            errors.append(f"{HEADER_INSTANCE_URL} must be an https URL such as https://yourcompany.my.salesforce.com")
+            instance_url = _UNUSABLE_INSTANCE_URL
 
         credentials = SalesforceCredentials(
             instance_url=instance_url,
@@ -177,6 +184,7 @@ class GatewayCredentialsMiddleware:
             username=username,
             password=password,
             security_token=header(HEADER_TOKEN),
+            header_error="; ".join(errors) or None,
         )
         request_id = (request.headers.get("x-request-id") or "").strip()[:64] or uuid.uuid4().hex[:12]
         creds_token = _credentials_var.set(credentials)
@@ -186,10 +194,6 @@ class GatewayCredentialsMiddleware:
         finally:
             _credentials_var.reset(creds_token)
             request_id_var.reset(rid_token)
-
-    @staticmethod
-    async def _reject(scope: Scope, receive: Receive, send: Send, status: int, message: str) -> None:
-        await JSONResponse({"error": "Invalid header", "message": message}, status_code=status)(scope, receive, send)
 
 
 def create_mcp_server(settings: Settings | None = None) -> FastMCP:
